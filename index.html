@@ -16,6 +16,7 @@
 </head>
 <body>
   <div id="app">
+    
     <div id="video-container">
       <video id="webcam" autoplay playsinline muted></video>
       <canvas id="overlay"></canvas>
@@ -46,6 +47,7 @@
           <button class="pill" onclick="selectJewelryType('bangles')">Bangles</button>
           <button id="tryall-btn" class="pill accent" onclick="toggleTryAll()">Try All</button>
         </div>
+        
         <div id="jewelry-options" class="carousel-cards" style="display:none;"></div>
       </div>
     </header>
@@ -71,9 +73,11 @@
 
     <div id="preview-modal">
         <span class="close-preview" onclick="closePreview()">&times;</span>
+        
         <div class="preview-container">
             <img id="preview-image" src="" alt="Captured Look">
         </div>
+
         <div class="preview-actions">
             <button class="pill accent" onclick="downloadSingleSnapshot()">WhatsApp / Download</button>
             <button class="pill" onclick="shareSingleSnapshot()">Share</button>
@@ -84,7 +88,9 @@
       <div class="gallery-content">
         <span class="close-gallery" onclick="closeGallery()">&times;</span>
         <h2 style="color:#d4af37; font-family:'Playfair Display';">Your Collection</h2>
+        
         <div id="gallery-grid"></div>
+        
         <div style="margin-top:20px;">
           <button class="pill accent" onclick="downloadAllAsZip()">Download ZIP</button>
         </div>
@@ -102,7 +108,9 @@
         <div class="modal-box">
             <h2 style="color:#d4af37; font-family:'Playfair Display';">Send to WhatsApp</h2>
             <p style="color:#ccc; font-size:14px;">Enter your number to receive this photo instantly.</p>
+            
             <input type="tel" id="user-phone" placeholder="+91 9876543210" class="input-dark">
+            
             <button class="pill accent" onclick="confirmWhatsAppDownload()">Send & Download</button>
             <button onclick="closeWhatsAppModal()" class="btn-text">Cancel</button>
         </div>
