@@ -4,10 +4,13 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>JEWELS-AI | Premium AR</title>
+  
   <link rel="stylesheet" href="style.css" />
+
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
+
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
 </head>
@@ -31,7 +34,7 @@
           <img src="logo.png" alt="Jewels-ai Logo" class="brand-logo" />
         </div>
         <div class="action-row">
-          <button id="snapshot-btn" onclick="takeSnapshot()">📷</button>
+          <button id="snapshot-btn" onclick="takeSnapshot()" title="Take Photo">📷</button>
         </div>
       </div>
 
@@ -48,21 +51,29 @@
     </header>
 
     <div id="chatbot-btn" onclick="toggleChatbot()">💬 Ask a Jeweler</div>
+    
     <div id="chatbot-box">
-        <div class="chat-header">Jewels-Ai Expert <span onclick="toggleChatbot()" style="float:right;cursor:pointer;">&times;</span></div>
-        <div class="chat-body">
+        <div class="chat-header">
+            Jewels-Ai Expert 
+            <span onclick="toggleChatbot()" style="float:right;cursor:pointer;">&times;</span>
+        </div>
+        
+        <div class="chat-body" id="chat-body-content">
             <div class="msg bot">Hello! I'm Sai Pallavi. How can I help you choose the perfect jewelry today?</div>
             <div class="msg bot">You can ask me about Gold purity or Diamond clarity!</div>
         </div>
+        
         <div class="chat-input">
-            <input type="text" placeholder="Type a message..." />
-            <button>&rarr;</button>
+            <input type="text" id="chat-input-field" placeholder="Type a message..." />
+            <button onclick="sendChatMessage()">&rarr;</button>
         </div>
     </div>
 
     <div id="preview-modal">
         <span class="close-preview" onclick="closePreview()">&times;</span>
-        <div class="preview-container"><img id="preview-image" src=""></div>
+        <div class="preview-container">
+            <img id="preview-image" src="" alt="Captured Look">
+        </div>
         <div class="preview-actions">
             <button class="pill accent" onclick="downloadSingleSnapshot()">WhatsApp / Download</button>
             <button class="pill" onclick="shareSingleSnapshot()">Share</button>
@@ -72,7 +83,7 @@
     <div id="gallery-modal">
       <div class="gallery-content">
         <span class="close-gallery" onclick="closeGallery()">&times;</span>
-        <h2 style="color:#d4af37;">Your Collection</h2>
+        <h2 style="color:#d4af37; font-family:'Playfair Display';">Your Collection</h2>
         <div id="gallery-grid"></div>
         <div style="margin-top:20px;">
           <button class="pill accent" onclick="downloadAllAsZip()">Download ZIP</button>
@@ -82,13 +93,15 @@
 
     <div id="lightbox-overlay">
         <span class="close-lightbox" onclick="closeLightbox()">&times;</span>
-        <div class="lightbox-main"><img id="lightbox-image" src=""></div>
+        <div class="lightbox-main">
+            <img id="lightbox-image" src="" alt="Zoomed View">
+        </div>
     </div>
 
     <div id="whatsapp-modal" class="modal-overlay">
         <div class="modal-box">
-            <h2 style="color:#d4af37;">Send to WhatsApp</h2>
-            <p>Enter your number to receive this photo instantly.</p>
+            <h2 style="color:#d4af37; font-family:'Playfair Display';">Send to WhatsApp</h2>
+            <p style="color:#ccc; font-size:14px;">Enter your number to receive this photo instantly.</p>
             <input type="tel" id="user-phone" placeholder="+91 9876543210" class="input-dark">
             <button class="pill accent" onclick="confirmWhatsAppDownload()">Send & Download</button>
             <button onclick="closeWhatsAppModal()" class="btn-text">Cancel</button>
@@ -98,10 +111,12 @@
     <div id="process-overlay">
         <div class="process-box">
             <div class="spinner"></div>
-            <p id="process-text">Processing...</p>
+            <p id="process-text" style="color:white; margin-top:10px;">Processing...</p>
         </div>
     </div>
+
   </div>
+
   <script src="script.js"></script>
 </body>
 </html>

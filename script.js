@@ -1,4 +1,4 @@
-/* script.js - Jewels-Ai Atelier: Premium Physics, Voice & AI Features */
+/* script.js - Jewels-Ai Atelier: Fixed Voice, Physics & Chatbot */
 
 /* --- CONFIGURATION --- */
 const API_KEY = "AIzaSyAXG3iG2oQjUA_BpnO8dK8y-MHJ7HLrhyE"; 
@@ -21,7 +21,7 @@ const videoElement = document.getElementById('webcam');
 const canvasElement = document.getElementById('overlay');
 const canvasCtx = canvasElement.getContext('2d');
 const loadingStatus = document.getElementById('loading-status');
-const voiceStatus = document.getElementById('voice-status-text');
+const voiceStatusText = document.getElementById('voice-status-text');
 
 /* App State */
 let earringImg = null, necklaceImg = null, ringImg = null, bangleImg = null;
@@ -34,8 +34,7 @@ let previousHandX = null;
 /* Physics State (Swing/Gravity) */
 let physics = {
     earringVelocity: 0,
-    earringAngle: 0,
-    lastHeadTilt: 0
+    earringAngle: 0
 };
 
 /* Auto-Try & Gallery */
@@ -46,30 +45,49 @@ let autoTryTimeout = null;
 let currentPreviewData = { url: null, name: 'Jewels-Ai_look.png' }; 
 let pendingDownloadAction = null; 
 
-/* --- 1. VOICE RECOGNITION AI --- */
+/* --- 1. VOICE RECOGNITION AI (FIXED) --- */
 function initVoiceControl() {
-    if ('webkitSpeechRecognition' in window) {
-        const recognition = new webkitSpeechRecognition();
-        recognition.continuous = true;
+    // 1. Check Browser Support
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+    if (SpeechRecognition) {
+        const recognition = new SpeechRecognition();
+        recognition.continuous = true; // Keep listening
         recognition.interimResults = false;
         recognition.lang = 'en-US';
 
         recognition.onstart = () => { 
             document.getElementById('voice-indicator').style.display = 'flex';
-            voiceStatus.innerText = "Listening...";
+            if(voiceStatusText) voiceStatusText.innerText = "Listening...";
         };
 
         recognition.onresult = (event) => {
             const command = event.results[event.results.length - 1][0].transcript.trim().toLowerCase();
-            voiceStatus.innerText = `Heard: "${command}"`;
+            if(voiceStatusText) voiceStatusText.innerText = `Heard: "${command}"`;
+            console.log("Voice Command:", command);
             processVoiceCommand(command);
-            setTimeout(() => { voiceStatus.innerText = "Listening..."; }, 2000);
+            
+            // Reset text after 2s
+            setTimeout(() => { if(voiceStatusText) voiceStatusText.innerText = "Listening..."; }, 2000);
         };
 
-        recognition.onerror = (event) => { console.log("Voice Error", event); };
-        recognition.start();
+        // 2. CRITICAL FIX: Restart on end (Keep-Alive)
+        recognition.onend = () => {
+            console.log("Voice service ended, restarting...");
+            try { recognition.start(); } catch(e) { /* Already started */ }
+        };
+
+        recognition.onerror = (event) => { 
+            console.warn("Voice Error:", event.error);
+            if (event.error === 'not-allowed') {
+                alert("Please allow microphone access for Voice Commands.");
+            }
+        };
+
+        try { recognition.start(); } catch(e) { console.log("Voice start error", e); }
     } else {
-        console.log("Voice API not supported");
+        console.warn("Voice API not supported in this browser.");
+        if(voiceStatusText) voiceStatusText.innerText = "Voice Not Supported";
     }
 }
 
@@ -81,10 +99,67 @@ function processVoiceCommand(cmd) {
     else if (cmd.includes('chain') || cmd.includes('necklace')) selectJewelryType('chains');
     else if (cmd.includes('ring')) selectJewelryType('rings');
     else if (cmd.includes('bangle')) selectJewelryType('bangles');
-    else if (cmd.includes('gold')) toggleCategory('gold'); // Assuming simple toggle
 }
 
-/* --- 2. GOOGLE DRIVE FETCHING --- */
+/* --- 2. CHATBOT LOGIC (FIXED) --- */
+function toggleChatbot() { 
+    const b = document.getElementById('chatbot-box'); 
+    if(b.style.display === 'flex') {
+        b.style.display = 'none';
+    } else {
+        b.style.display = 'flex';
+        // Focus input
+        setTimeout(() => document.getElementById('chat-input-field').focus(), 100);
+    }
+}
+
+function sendChatMessage() {
+    const input = document.getElementById('chat-input-field');
+    const msg = input.value.trim();
+    if (!msg) return;
+
+    // 1. Add User Message
+    addChatBubble(msg, 'user');
+    input.value = '';
+
+    // 2. Simulate Bot Thinking & Reply
+    setTimeout(() => {
+        let reply = "That's a great choice! Would you like to see more designs in that style?";
+        
+        if(msg.toLowerCase().includes('price') || msg.toLowerCase().includes('cost')) 
+            reply = "Our prices depend on current gold rates. Please download the photo and share it on WhatsApp for an instant quote!";
+        else if(msg.toLowerCase().includes('gold') || msg.toLowerCase().includes('purity'))
+            reply = "We specialize in 22ct and 24ct Hallmarked Gold. All designs you see here are 22ct.";
+        else if(msg.toLowerCase().includes('diamond'))
+            reply = "These are VVS clarity diamonds. Truly sparkling!";
+            
+        addChatBubble(reply, 'bot');
+    }, 1000); // 1 second delay
+}
+
+function addChatBubble(text, sender) {
+    const body = document.getElementById('chat-body-content');
+    const div = document.createElement('div');
+    div.className = `msg ${sender}`;
+    div.innerText = text;
+    body.appendChild(div);
+    body.scrollTop = body.scrollHeight; // Auto scroll to bottom
+}
+
+// Bind Enter key to chat
+document.addEventListener("DOMContentLoaded", () => {
+    const chatInput = document.getElementById('chat-input-field');
+    if(chatInput) {
+        chatInput.addEventListener("keypress", function(event) {
+            if (event.key === "Enter") {
+                event.preventDefault();
+                sendChatMessage();
+            }
+        });
+    }
+});
+
+/* --- 3. GOOGLE DRIVE FETCHING --- */
 async function fetchFromDrive(category) {
     if (JEWELRY_ASSETS[category]) return;
     const folderId = DRIVE_FOLDERS[category];
@@ -133,47 +208,35 @@ async function preloadCategory(type) {
     }
 }
 
-/* --- 3. WHATSAPP AUTOMATION (Simulated) --- */
+/* --- 4. WHATSAPP AUTOMATION --- */
 function requestWhatsApp(actionType) {
     pendingDownloadAction = actionType;
     document.getElementById('whatsapp-modal').style.display = 'flex';
 }
-
 function closeWhatsAppModal() {
     document.getElementById('whatsapp-modal').style.display = 'none';
     pendingDownloadAction = null;
 }
-
 function confirmWhatsAppDownload() {
     const phoneInput = document.getElementById('user-phone');
     const phone = phoneInput.value.trim();
     if (phone.length < 5) { alert("Invalid Number"); return; }
-
-    // UI Feedback
     document.getElementById('whatsapp-modal').style.display = 'none';
     const overlay = document.getElementById('process-overlay');
     overlay.style.display = 'flex';
     document.getElementById('process-text').innerText = "Sending to WhatsApp...";
-
-    // 1. Send data to Google Script (simulating backend trigger)
     uploadToDrive(phone);
-
-    // 2. Open WhatsApp Chat with "Thank You" pre-filled (Client-side automation)
     setTimeout(() => {
         const msg = encodeURIComponent("Hi! Here is my Jewels-Ai virtual try-on look. Thanks!");
-        // We open this in a new tab so they can send the message
         window.open(`https://wa.me/${phone.replace('+','')}?text=${msg}`, '_blank');
-        
-        // 3. Process the download locally
         if (pendingDownloadAction === 'single') performSingleDownload();
         else if (pendingDownloadAction === 'zip') performZipDownload();
-        
         setTimeout(() => { overlay.style.display = 'none'; }, 2500);
     }, 1500);
 }
-
 function uploadToDrive(phone) {
-    const data = pendingDownloadAction === 'single' ? currentPreviewData : autoSnapshots[0]; // Simplified for logic
+    const data = pendingDownloadAction === 'single' ? currentPreviewData : (autoSnapshots[0] || {}); 
+    if(!data.url) return;
     fetch(UPLOAD_SCRIPT_URL, {
         method: 'POST',
         mode: 'no-cors',
@@ -200,7 +263,7 @@ async function shareSingleSnapshot() {
     else alert("Share not supported.");
 }
 
-/* --- 4. ADVANCED AI & PHYSICS CORE --- */
+/* --- 5. PHYSICS & AI CORE --- */
 
 function calculateAngle(p1, p2) { return Math.atan2(p2.y - p1.y, p2.x - p1.x); }
 
@@ -209,52 +272,37 @@ const hands = new Hands({ locateFile: (file) => `https://cdn.jsdelivr.net/npm/@m
 hands.setOptions({ maxNumHands: 1, modelComplexity: 1, minDetectionConfidence: 0.5, minTrackingConfidence: 0.5 });
 hands.onResults((results) => {
   isProcessingHand = false; 
-  // We draw hands ON TOP of face, so we don't clear canvas here, FaceMesh clears it.
-  
-  // Coordinate Mapping
   const w = canvasElement.width;
   const h = canvasElement.height;
-  
   canvasCtx.save();
-  // Mirroring to match video
   canvasCtx.translate(w, 0);
   canvasCtx.scale(-1, 1);
 
   if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
       const lm = results.multiHandLandmarks[0];
 
-      // --- RING LOGIC (Rotation & Snug Fit) ---
       if (ringImg && ringImg.complete) {
           const mcp = { x: lm[13].x * w, y: lm[13].y * h };
           const pip = { x: lm[14].x * w, y: lm[14].y * h };
-          
           const angle = calculateAngle(mcp, pip);
           const dist = Math.hypot(pip.x - mcp.x, pip.y - mcp.y);
-          
-          const rWidth = dist * 0.7; // Snug fit
+          const rWidth = dist * 0.7; 
           const rHeight = (ringImg.height / ringImg.width) * rWidth;
-
           canvasCtx.save();
           canvasCtx.translate(mcp.x, mcp.y);
-          canvasCtx.rotate(angle - (Math.PI / 2)); // Rotate with finger
+          canvasCtx.rotate(angle - (Math.PI / 2)); 
           canvasCtx.drawImage(ringImg, -rWidth/2, dist * 0.15, rWidth, rHeight);
           canvasCtx.restore();
       }
 
-      // --- BANGLE LOGIC (Wrist Thickness Detection) ---
       if (bangleImg && bangleImg.complete) {
           const wrist = { x: lm[0].x * w, y: lm[0].y * h };
           const pinkyMcp = { x: lm[17].x * w, y: lm[17].y * h };
           const indexMcp = { x: lm[5].x * w, y: lm[5].y * h };
-          
-          // Calculate wrist width based on palm base width
           const wristWidth = Math.hypot(pinkyMcp.x - indexMcp.x, pinkyMcp.y - indexMcp.y);
           const armAngle = calculateAngle(wrist, { x: lm[9].x * w, y: lm[9].y * h });
-
-          // Dynamic Sizing based on "detected" wrist thickness
-          const bWidth = wristWidth * 1.6; // Multiplier for loose fit
+          const bWidth = wristWidth * 1.6; 
           const bHeight = (bangleImg.height / bangleImg.width) * bWidth;
-
           canvasCtx.save();
           canvasCtx.translate(wrist.x, wrist.y);
           canvasCtx.rotate(armAngle - (Math.PI / 2));
@@ -262,7 +310,6 @@ hands.onResults((results) => {
           canvasCtx.restore();
       }
 
-      // --- GESTURE CONTROL ---
       if (!autoTryRunning) {
           const now = Date.now();
           if (now - lastGestureTime > GESTURE_COOLDOWN) {
@@ -282,28 +329,25 @@ hands.onResults((results) => {
   canvasCtx.restore();
 });
 
-/* Face: Earrings & Necklaces + Physics */
+/* Face: Earrings & Necklaces + REALISTIC PHYSICS */
 const faceMesh = new FaceMesh({ locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}` });
 faceMesh.setOptions({ refineLandmarks: true, minDetectionConfidence: 0.5, minTrackingConfidence: 0.5 });
 faceMesh.onResults((results) => {
   isProcessingFace = false;
   if(loadingStatus.style.display !== 'none') loadingStatus.style.display = 'none';
 
-  // Resize canvas to match video
   canvasElement.width = videoElement.videoWidth;
   canvasElement.height = videoElement.videoHeight;
   
   canvasCtx.save();
   canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
   
-  // --- BEAUTY FILTER (Skin Smoothing) ---
-  // Simple overlay approach for performance
+  // Beauty Filter
   canvasCtx.globalCompositeOperation = 'overlay';
-  canvasCtx.fillStyle = 'rgba(255, 220, 180, 0.15)'; // Subtle warm tint
+  canvasCtx.fillStyle = 'rgba(255, 220, 180, 0.15)'; 
   canvasCtx.fillRect(0,0, canvasElement.width, canvasElement.height);
-  canvasCtx.globalCompositeOperation = 'source-over'; // Reset
+  canvasCtx.globalCompositeOperation = 'source-over'; 
 
-  // Mirroring
   canvasCtx.translate(canvasElement.width, 0);
   canvasCtx.scale(-1, 1);
 
@@ -312,65 +356,58 @@ faceMesh.onResults((results) => {
     const w = canvasElement.width;
     const h = canvasElement.height;
 
-    // Landmarks
     const leftEar = { x: lm[132].x * w, y: lm[132].y * h };
     const rightEar = { x: lm[361].x * w, y: lm[361].y * h };
     const neck = { x: lm[152].x * w, y: lm[152].y * h };
     const nose = { x: lm[1].x * w, y: lm[1].y * h };
 
-    // --- PHYSICS ENGINE (Gravity & Swing) ---
-    // Calculate Head Roll (Tilt)
+    // --- ENHANCED PHYSICS (GRAVITY & SWING) ---
+    // 1. Calculate Head Angle
     const rawHeadTilt = Math.atan2(rightEar.y - leftEar.y, rightEar.x - leftEar.x);
     
-    // Physics Simulation: Spring System
-    // Target angle is Vertical (Gravity) relative to head tilt
-    // If head tilts right, earring should hang vertical (rotate left relative to head)
+    // 2. Target: Absolute vertical (Gravity)
+    // The earring wants to point DOWN (0 degrees in world space)
+    // Relative to the canvas rotation, that is -rawHeadTilt
     const gravityTarget = -rawHeadTilt; 
     
-    // Apply inertia
-    const force = (gravityTarget - physics.earringAngle) * 0.1; // Spring stiffness
+    // 3. Physics Simulation (Spring + Damping)
+    // Tuning: Stiff enough to pull down, loose enough to swing
+    const force = (gravityTarget - physics.earringAngle) * 0.08; // Stiffness
     physics.earringVelocity += force;
-    physics.earringVelocity *= 0.85; // Damping (Air resistance)
+    physics.earringVelocity *= 0.95; // Damping (0.99 = swings forever, 0.8 = stops fast)
     physics.earringAngle += physics.earringVelocity;
 
     const earDist = Math.hypot(rightEar.x - leftEar.x, rightEar.y - leftEar.y);
 
-    // --- EARRINGS LOGIC (Side View & Physics) ---
     if (earringImg && earringImg.complete) {
       let ew = earDist * 0.25;
       let eh = (earringImg.height/earringImg.width) * ew;
 
-      // Detect Side View (Yaw)
-      // Check distance from nose to ears. If nose is too close to one ear, hide the other.
+      // Side View Hiding
       const distToLeft = Math.hypot(nose.x - leftEar.x, nose.y - leftEar.y);
       const distToRight = Math.hypot(nose.x - rightEar.x, nose.y - rightEar.y);
       const ratio = distToLeft / (distToLeft + distToRight);
 
-      // Draw Left Earring (only if visible)
       if (ratio > 0.2) { 
           canvasCtx.save();
           canvasCtx.translate(leftEar.x, leftEar.y);
-          canvasCtx.rotate(physics.earringAngle); // Apply Gravity
+          canvasCtx.rotate(physics.earringAngle); // Apply Swing
           canvasCtx.drawImage(earringImg, -ew/2, 0, ew, eh);
           canvasCtx.restore();
       }
 
-      // Draw Right Earring (only if visible)
       if (ratio < 0.8) {
           canvasCtx.save();
           canvasCtx.translate(rightEar.x, rightEar.y);
-          canvasCtx.rotate(physics.earringAngle); // Apply Gravity
+          canvasCtx.rotate(physics.earringAngle); // Apply Swing
           canvasCtx.drawImage(earringImg, -ew/2, 0, ew, eh);
           canvasCtx.restore();
       }
     }
 
-    // --- NECKLACE LOGIC (Auto-Sizing) ---
     if (necklaceImg && necklaceImg.complete) {
-      // Auto-Size based on ear distance (proxy for body size)
-      let nw = earDist * 0.85; // Snug fit
+      let nw = earDist * 0.85; 
       let nh = (necklaceImg.height/necklaceImg.width) * nw;
-      
       canvasCtx.drawImage(necklaceImg, neck.x - nw/2, neck.y + (earDist*0.2), nw, nh);
     }
   }
@@ -386,14 +423,13 @@ async function startCameraFast() {
             videoElement.play(); 
             loadingStatus.textContent = "Loading AI Models..."; 
             detectLoop();
-            initVoiceControl(); // Start AI Voice
+            initVoiceControl(); 
         };
-    } catch (err) { alert("Camera Error"); }
+    } catch (err) { alert("Camera Error: Check Permissions"); }
 }
 
 async function detectLoop() {
     if (videoElement.readyState >= 2) {
-        // Send frames to AI
         if (!isProcessingFace) { isProcessingFace = true; await faceMesh.send({image: videoElement}); }
         if (!isProcessingHand) { isProcessingHand = true; await hands.send({image: videoElement}); }
     }
@@ -401,7 +437,7 @@ async function detectLoop() {
 }
 window.onload = startCameraFast;
 
-/* --- UI LOGIC --- */
+/* --- UI HELPERS --- */
 function navigateJewelry(dir) {
   if (!currentType || !PRELOADED_IMAGES[currentType]) return;
   const list = PRELOADED_IMAGES[currentType];
@@ -418,7 +454,6 @@ function navigateJewelry(dir) {
 
 async function selectJewelryType(type) {
   currentType = type;
-  // Reset images
   if(type !== 'earrings') earringImg = null;
   if(type !== 'chains') necklaceImg = null;
   if(type !== 'rings') ringImg = null;
@@ -459,13 +494,11 @@ async function runAutoStep() {
     if (!autoTryRunning) return;
     const assets = PRELOADED_IMAGES[currentType];
     if (!assets || autoTryIndex >= assets.length) { stopAutoTry(); return; }
-    // Set image
     const targetImg = assets[autoTryIndex];
     if (currentType === 'earrings') earringImg = targetImg;
     else if (currentType === 'chains') necklaceImg = targetImg;
     else if (currentType === 'rings') ringImg = targetImg;
     else if (currentType === 'bangles') bangleImg = targetImg;
-    // Wait then Snap
     autoTryTimeout = setTimeout(() => { captureToGallery(); autoTryIndex++; runAutoStep(); }, 1500); 
 }
 
@@ -478,7 +511,6 @@ function captureToGallery() {
   tempCtx.setTransform(1, 0, 0, 1, 0, 0); 
   try { tempCtx.drawImage(canvasElement, 0, 0); } catch(e) {}
   
-  // Branding
   const padding = 20; 
   tempCtx.font = "bold 24px Montserrat, sans-serif"; tempCtx.textAlign = "left"; tempCtx.textBaseline = "bottom";
   tempCtx.fillStyle = "white"; tempCtx.fillText("Jewels-Ai Look", padding, tempCanvas.height - padding);
@@ -511,4 +543,4 @@ window.closeGallery = closeGallery; window.closeLightbox = closeLightbox; window
 window.downloadAllAsZip = downloadAllAsZip; window.closePreview = closePreview;
 window.downloadSingleSnapshot = downloadSingleSnapshot; window.shareSingleSnapshot = shareSingleSnapshot;
 window.confirmWhatsAppDownload = confirmWhatsAppDownload; window.closeWhatsAppModal = closeWhatsAppModal;
-window.toggleChatbot = function() { const b = document.getElementById('chatbot-box'); b.style.display = b.style.display==='flex'?'none':'flex'; };
+window.toggleChatbot = toggleChatbot; window.sendChatMessage = sendChatMessage;
