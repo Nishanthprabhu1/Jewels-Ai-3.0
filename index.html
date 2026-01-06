@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>JEWELS-AI | Premium AR</title>
+  <link rel="stylesheet" href="style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+</head>
+<body>
+  <div id="app">
+    <div id="video-container">
+      <video id="webcam" autoplay playsinline muted></video>
+      <canvas id="overlay"></canvas>
+    </div>
+
+    <div id="voice-indicator">
+        <div class="mic-icon">🎙️</div>
+        <span id="voice-status-text">Listening...</span>
+    </div>
+
+    <div id="loading-status">Starting Engine...</div>
+
+    <header id="controls-hero">
+      <div class="brand-row">
+        <div class="brand-left">
+          <img src="logo.png" alt="Jewels-ai Logo" class="brand-logo" />
+        </div>
+        <div class="action-row">
+          <button id="snapshot-btn" onclick="takeSnapshot()">📷</button>
+        </div>
+      </div>
+
+      <div class="controls-panel">
+        <div id="jewelry-mode" class="pill-group">
+          <button class="pill" onclick="selectJewelryType('earrings')">Earrings</button>
+          <button class="pill" onclick="selectJewelryType('chains')">Chains</button>
+          <button class="pill" onclick="selectJewelryType('rings')">Rings</button>
+          <button class="pill" onclick="selectJewelryType('bangles')">Bangles</button>
+          <button id="tryall-btn" class="pill accent" onclick="toggleTryAll()">Try All</button>
+        </div>
+        <div id="jewelry-options" class="carousel-cards" style="display:none;"></div>
+      </div>
+    </header>
+
+    <div id="chatbot-btn" onclick="toggleChatbot()">💬 Ask a Jeweler</div>
+    <div id="chatbot-box">
+        <div class="chat-header">Jewels-Ai Expert <span onclick="toggleChatbot()" style="float:right;cursor:pointer;">&times;</span></div>
+        <div class="chat-body">
+            <div class="msg bot">Hello! I'm Sai Pallavi. How can I help you choose the perfect jewelry today?</div>
+            <div class="msg bot">You can ask me about Gold purity or Diamond clarity!</div>
+        </div>
+        <div class="chat-input">
+            <input type="text" placeholder="Type a message..." />
+            <button>&rarr;</button>
+        </div>
+    </div>
+
+    <div id="preview-modal">
+        <span class="close-preview" onclick="closePreview()">&times;</span>
+        <div class="preview-container"><img id="preview-image" src=""></div>
+        <div class="preview-actions">
+            <button class="pill accent" onclick="downloadSingleSnapshot()">WhatsApp / Download</button>
+            <button class="pill" onclick="shareSingleSnapshot()">Share</button>
+        </div>
+    </div>
+
+    <div id="gallery-modal">
+      <div class="gallery-content">
+        <span class="close-gallery" onclick="closeGallery()">&times;</span>
+        <h2 style="color:#d4af37;">Your Collection</h2>
+        <div id="gallery-grid"></div>
+        <div style="margin-top:20px;">
+          <button class="pill accent" onclick="downloadAllAsZip()">Download ZIP</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="lightbox-overlay">
+        <span class="close-lightbox" onclick="closeLightbox()">&times;</span>
+        <div class="lightbox-main"><img id="lightbox-image" src=""></div>
+    </div>
+
+    <div id="whatsapp-modal" class="modal-overlay">
+        <div class="modal-box">
+            <h2 style="color:#d4af37;">Send to WhatsApp</h2>
+            <p>Enter your number to receive this photo instantly.</p>
+            <input type="tel" id="user-phone" placeholder="+91 9876543210" class="input-dark">
+            <button class="pill accent" onclick="confirmWhatsAppDownload()">Send & Download</button>
+            <button onclick="closeWhatsAppModal()" class="btn-text">Cancel</button>
+        </div>
+    </div>
+
+    <div id="process-overlay">
+        <div class="process-box">
+            <div class="spinner"></div>
+            <p id="process-text">Processing...</p>
+        </div>
+    </div>
+  </div>
+  <script src="script.js"></script>
+</body>
+</html>
