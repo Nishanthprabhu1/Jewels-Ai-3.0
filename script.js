@@ -1,4 +1,4 @@
-/* script.js - Jewels-Ai Atelier: Fixed Voice, Physics & Chatbot */
+/* script.js - Jewels-Ai Atelier: Fixed Voice, Physics & Auto-Select First Item */
 
 /* --- CONFIGURATION --- */
 const API_KEY = "AIzaSyAXG3iG2oQjUA_BpnO8dK8y-MHJ7HLrhyE"; 
@@ -452,6 +452,7 @@ function navigateJewelry(dir) {
   else if (currentType === 'bangles') bangleImg = nextItem;
 }
 
+/* UPDATED FUNCTION: Auto-selects first item and highlights button */
 async function selectJewelryType(type) {
   currentType = type;
   if(type !== 'earrings') earringImg = null;
@@ -460,12 +461,41 @@ async function selectJewelryType(type) {
   if(type !== 'bangles') bangleImg = null;
 
   await preloadCategory(type); 
+  
+  // --- NEW: Auto-select first item ---
+  if (PRELOADED_IMAGES[type] && PRELOADED_IMAGES[type].length > 0) {
+      const firstItem = PRELOADED_IMAGES[type][0];
+      if (type === 'earrings') earringImg = firstItem;
+      else if (type === 'chains') necklaceImg = firstItem;
+      else if (type === 'rings') ringImg = firstItem;
+      else if (type === 'bangles') bangleImg = firstItem;
+  }
+  // -----------------------------------
+
   const container = document.getElementById('jewelry-options');
   container.innerHTML = ''; container.style.display = 'flex';
   if (!JEWELRY_ASSETS[type]) return;
+
   JEWELRY_ASSETS[type].forEach((file, i) => {
     const btnImg = new Image(); btnImg.src = file.src; btnImg.crossOrigin = 'anonymous'; btnImg.className = "thumb-btn"; 
+    
+    // --- NEW: Highlight first button initially ---
+    if(i === 0) {
+        btnImg.style.borderColor = "var(--accent)";
+        btnImg.style.transform = "scale(1.05)";
+    }
+    // ---------------------------------------------
+
     btnImg.onclick = () => {
+        // Reset all styles
+        Array.from(container.children).forEach(c => {
+            c.style.borderColor = "rgba(255,255,255,0.2)";
+            c.style.transform = "scale(1)";
+        });
+        // Highlight active
+        btnImg.style.borderColor = "var(--accent)";
+        btnImg.style.transform = "scale(1.05)";
+
         const fullImg = PRELOADED_IMAGES[type][i];
         if (type === 'earrings') earringImg = fullImg;
         else if (type === 'chains') necklaceImg = fullImg;
