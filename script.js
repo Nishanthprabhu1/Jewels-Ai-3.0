@@ -1,4 +1,4 @@
-/* script.js - Jewels-Ai Atelier: Final Position Fixes + Silent Voice */
+/* script.js - Jewels-Ai Atelier: Auto-Select First Item + Position Fixes + Silent Voice */
 
 /* --- CONFIGURATION --- */
 const DRIVE_API_KEY = "AIzaSyAXG3iG2oQjUA_BpnO8dK8y-MHJ7HLrhyE"; 
@@ -180,41 +180,33 @@ hands.onResults((results) => {
   if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
       const lm = results.multiHandLandmarks[0];
 
-      // --- RING (Fixed Placement: Moved Up to Knuckle) ---
+      // --- RING (Fixed Placement) ---
       if (ringImg && ringImg.complete) {
-          const mcp = { x: lm[13].x * w, y: lm[13].y * h }; // Base of finger
-          const pip = { x: lm[14].x * w, y: lm[14].y * h }; // Mid joint
-          
+          const mcp = { x: lm[13].x * w, y: lm[13].y * h }; 
+          const pip = { x: lm[14].x * w, y: lm[14].y * h }; 
           const angle = calculateAngle(mcp, pip);
           const dist = Math.hypot(pip.x - mcp.x, pip.y - mcp.y);
-          
           const rWidth = dist * 0.7; 
           const rHeight = (ringImg.height / ringImg.width) * rWidth;
-
           canvasCtx.save();
           canvasCtx.translate(mcp.x, mcp.y);
           canvasCtx.rotate(angle - (Math.PI / 2)); 
-          // FIX: dist * -0.1 moves it UP away from the web of the finger
           canvasCtx.drawImage(ringImg, -rWidth/2, dist * -0.1, rWidth, rHeight);
           canvasCtx.restore();
       }
 
-      // --- BANGLE (Fixed Placement: Moved Up Forearm) ---
+      // --- BANGLE (Fixed Placement) ---
       if (bangleImg && bangleImg.complete) {
           const wrist = { x: lm[0].x * w, y: lm[0].y * h };
           const pinkyMcp = { x: lm[17].x * w, y: lm[17].y * h };
           const indexMcp = { x: lm[5].x * w, y: lm[5].y * h };
-          
           const wristWidth = Math.hypot(pinkyMcp.x - indexMcp.x, pinkyMcp.y - indexMcp.y);
           const armAngle = calculateAngle(wrist, { x: lm[9].x * w, y: lm[9].y * h });
-          
           const bWidth = wristWidth * 1.5; 
           const bHeight = (bangleImg.height / bangleImg.width) * bWidth;
-
           canvasCtx.save();
           canvasCtx.translate(wrist.x, wrist.y);
           canvasCtx.rotate(armAngle - (Math.PI / 2));
-          // FIX: + (wristWidth * 0.4) pushes bangle UP the arm
           canvasCtx.drawImage(bangleImg, -bWidth/2, -bHeight/2 + (wristWidth * 0.4), bWidth, bHeight);
           canvasCtx.restore();
       }
@@ -273,7 +265,6 @@ faceMesh.onResults((results) => {
       const distToRight = Math.hypot(nose.x - rightEar.x, nose.y - rightEar.y);
       const ratio = distToLeft / (distToLeft + distToRight);
 
-      // FIX: + (ew * 0.15) lowers earring slightly to hang from lobe
       if (ratio > 0.2) { 
           canvasCtx.save(); canvasCtx.translate(leftEar.x, leftEar.y + (ew * 0.15)); 
           canvasCtx.rotate(physics.earringAngle); 
@@ -325,9 +316,25 @@ function navigateJewelry(dir) {
 
 async function selectJewelryType(type) {
   currentType = type;
-  if(type !== 'earrings') earringImg = null; if(type !== 'chains') necklaceImg = null;
-  if(type !== 'rings') ringImg = null; if(type !== 'bangles') bangleImg = null;
+  
+  // Clear other jewelry
+  if(type !== 'earrings') earringImg = null; 
+  if(type !== 'chains') necklaceImg = null;
+  if(type !== 'rings') ringImg = null; 
+  if(type !== 'bangles') bangleImg = null;
+
   await preloadCategory(type); 
+  
+  // --- NEW FEATURE: Auto-select first product ---
+  if (PRELOADED_IMAGES[type] && PRELOADED_IMAGES[type].length > 0) {
+      const firstImg = PRELOADED_IMAGES[type][0];
+      if (type === 'earrings') earringImg = firstImg;
+      else if (type === 'chains') necklaceImg = firstImg;
+      else if (type === 'rings') ringImg = firstImg;
+      else if (type === 'bangles') bangleImg = firstImg;
+  }
+  // ----------------------------------------------
+
   const container = document.getElementById('jewelry-options');
   container.innerHTML = ''; container.style.display = 'flex';
   if (!JEWELRY_ASSETS[type]) return;
@@ -351,15 +358,6 @@ function captureToGallery() {
   tempCtx.translate(tempCanvas.width, 0); tempCtx.scale(-1, 1); tempCtx.drawImage(videoElement, 0, 0);
   tempCtx.setTransform(1, 0, 0, 1, 0, 0); 
   try { tempCtx.drawImage(canvasElement, 0, 0); } catch(e) {}
-  
-  const padding = 20; 
-  tempCtx.font = "bold 24px Montserrat, sans-serif"; tempCtx.textAlign = "left"; tempCtx.textBaseline = "bottom";
-  tempCtx.fillStyle = "white"; tempCtx.fillText("Jewels-Ai Look", padding, tempCanvas.height - padding);
-  if (watermarkImg.complete) {
-      const wWidth = tempCanvas.width * 0.25; const wHeight = (watermarkImg.height / watermarkImg.width) * wWidth;
-      tempCtx.drawImage(watermarkImg, tempCanvas.width - wWidth - padding, tempCanvas.height - wHeight - padding, wWidth, wHeight);
-  }
-  
   const dataUrl = tempCanvas.toDataURL('image/png');
   autoSnapshots.push({ url: dataUrl, name: `Look_${Date.now()}.png` });
   return { url: dataUrl, name: `Look_${Date.now()}.png` }; 
