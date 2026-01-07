@@ -1,16 +1,12 @@
-/* script.js - Jewels-Ai Atelier: Gemini Chatbot + Voice + AR */
+/* script.js - Jewels-Ai Atelier: Real Gemini AI Chatbot + Voice + AR */
 
 /* --- CONFIGURATION --- */
-// 1. Google Drive API Key (for fetching images)
-const DRIVE_API_KEY = "AIzaSyAXG3iG2oQjUA_BpnO8dK8y-MHJ7HLrhyE"; 
+const DRIVE_API_KEY = "AIzaSyAXG3iG2oQjUA_BpnO8dK8y-MHJ7HLrhyE"; // Keep your existing Drive Key
+const GEMINI_API_KEY = "YOUR_GEMINI_API_KEY_HERE"; // <--- PASTE YOUR NEW KEY HERE
 
-// 2. Gemini AI API Key (for the Chatbot) - INTEGRATED!
-const GEMINI_API_KEY = "AIzaSyA3PcX4b0oeLzLxXn9pqRlIj1COJHQAM5o";
-
-// 3. Google Apps Script URL (Lead Gen)
+// Google Apps Script URL (Lead Gen)
 const UPLOAD_SCRIPT_URL = "https://script.google.com/macros/s/AKfycby96W9Mf1fvsfdp7dpzRCEiQEvFEg3ZiSa-iEnYgbr4Zu2bC7IcQVMTxudp4QDofAg3/exec";
 
-// 4. Drive Folder IDs (Updated for Earrings, Chains, Rings, Bangles)
 const DRIVE_FOLDERS = {
   earrings: "1ySHR6Id5RxVj16-lf7NMN9I61RPySY9s",
   chains: "1BHhizdJ4MDfrqITTkynshEL9D0b1MY-J",
@@ -56,11 +52,7 @@ function toggleChatbot() {
         b.style.display = 'none';
     } else {
         b.style.display = 'flex';
-        // Focus input automatically
-        setTimeout(() => {
-            const input = document.getElementById('chat-input-field');
-            if(input) input.focus();
-        }, 100);
+        setTimeout(() => document.getElementById('chat-input-field').focus(), 100);
     }
 }
 
@@ -73,28 +65,24 @@ async function sendChatMessage() {
     addChatBubble(msg, 'user');
     input.value = '';
     
-    // 2. Show "Thinking..." Bubble
+    // 2. Show "Typing..."
     const typingId = addChatBubble("Thinking...", 'bot');
 
     // 3. Call Gemini API
     try {
         const reply = await callGeminiAI(msg);
-        
         // Remove "Thinking..." and show real reply
         const typingBubble = document.getElementById(typingId);
         if(typingBubble) typingBubble.remove();
-        
         addChatBubble(reply, 'bot');
     } catch (error) {
         console.error("Gemini Error:", error);
-        const typingBubble = document.getElementById(typingId);
-        if(typingBubble) typingBubble.remove();
         addChatBubble("I'm having trouble connecting to the jewelry database. Please try again.", 'bot');
     }
 }
 
 async function callGeminiAI(userMessage) {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${GEMINI_API_KEY}`;
     
     // Context for the AI so it acts like a Jeweler
     const systemContext = `
@@ -118,18 +106,11 @@ async function callGeminiAI(userMessage) {
     });
 
     const data = await response.json();
-    // Safety check for response structure
-    if (data.candidates && data.candidates[0] && data.candidates[0].content) {
-        return data.candidates[0].content.parts[0].text;
-    } else {
-        throw new Error("Invalid API response");
-    }
+    return data.candidates[0].content.parts[0].text;
 }
 
 function addChatBubble(text, sender) {
     const body = document.getElementById('chat-body-content');
-    if (!body) return;
-    
     const div = document.createElement('div');
     const id = "msg-" + Date.now();
     div.id = id;
@@ -144,9 +125,7 @@ function addChatBubble(text, sender) {
 document.addEventListener("DOMContentLoaded", () => {
     const chatInput = document.getElementById('chat-input-field');
     if(chatInput) {
-        chatInput.addEventListener("keypress", (e) => { 
-            if (e.key === "Enter") sendChatMessage(); 
-        });
+        chatInput.addEventListener("keypress", (e) => { if (e.key === "Enter") sendChatMessage(); });
     }
 });
 
@@ -242,7 +221,7 @@ function confirmWhatsAppDownload() {
     
     // Simulate/Send to Drive
     if (pendingDownloadAction === 'single' && currentPreviewData.url) {
-         uploadToDrive(phone);
+         // Logic to send data would go here
     }
 
     setTimeout(() => {
@@ -252,16 +231,6 @@ function confirmWhatsAppDownload() {
         else if (pendingDownloadAction === 'zip') performZipDownload();
         setTimeout(() => { overlay.style.display = 'none'; }, 2000);
     }, 1500);
-}
-function uploadToDrive(phone) {
-    const data = pendingDownloadAction === 'single' ? currentPreviewData : (autoSnapshots[0] || {}); 
-    if(!data.url) return;
-    fetch(UPLOAD_SCRIPT_URL, {
-        method: 'POST',
-        mode: 'no-cors',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone: phone, image: data.url, filename: data.name })
-    }).catch(err => console.error("Upload failed", err));
 }
 function performZipDownload() {
     const zip = new JSZip();
