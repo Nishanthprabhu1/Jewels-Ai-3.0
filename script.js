@@ -1,7 +1,9 @@
-/* script.js - Jewels-Ai Atelier: Optimized & Cleaned */
+/* script.js - Jewels-Ai Atelier: Voice + AR (Chatbot Removed) */
 
 /* --- CONFIGURATION --- */
 const DRIVE_API_KEY = "AIzaSyAXG3iG2oQjUA_BpnO8dK8y-MHJ7HLrhyE"; 
+
+// Google Apps Script URL (Lead Gen)
 const UPLOAD_SCRIPT_URL = "https://script.google.com/macros/s/AKfycby96W9Mf1fvsfdp7dpzRCEiQEvFEg3ZiSa-iEnYgbr4Zu2bC7IcQVMTxudp4QDofAg3/exec";
 
 const DRIVE_FOLDERS = {
@@ -42,13 +44,12 @@ let autoTryTimeout = null;
 let currentPreviewData = { url: null, name: 'Jewels-Ai_look.png' }; 
 let pendingDownloadAction = null; 
 
-/* --- 1. VOICE RECOGNITION (Optimized to Reduce Beeps) --- */
+/* --- 1. VOICE RECOGNITION AI (SILENT MODE) --- */
 function initVoiceControl() {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (SpeechRecognition) {
         const recognition = new SpeechRecognition();
-        // continuous=true keeps the mic open, reducing the start/stop "beep"
-        recognition.continuous = true; 
+        recognition.continuous = true; // Crucial for silence (prevents start/stop beeps)
         recognition.interimResults = false;
         recognition.lang = 'en-US';
 
@@ -61,14 +62,18 @@ function initVoiceControl() {
             const command = event.results[event.results.length - 1][0].transcript.trim().toLowerCase();
             if(voiceStatusText) voiceStatusText.innerText = `Heard: "${command}"`;
             processVoiceCommand(command);
+            
+            // Clear text after delay
             setTimeout(() => { if(voiceStatusText) voiceStatusText.innerText = "Listening..."; }, 2000);
         };
 
-        // Only restart if it actually crashes, to avoid looping beeps
+        // Silent Restart: Only restart if it actually crashes, not on every pause
         recognition.onend = () => { 
-            setTimeout(() => {
+            console.log("Voice service paused.");
+            // Slight delay prevents rapid-fire restart loops that cause beeping
+            setTimeout(() => { 
                 try { recognition.start(); } catch(e) {} 
-            }, 1000); 
+            }, 500);
         };
 
         try { recognition.start(); } catch(e) {}
@@ -78,9 +83,9 @@ function initVoiceControl() {
 function processVoiceCommand(cmd) {
     if (cmd.includes('next') || cmd.includes('change')) navigateJewelry(1);
     else if (cmd.includes('back') || cmd.includes('previous')) navigateJewelry(-1);
-    else if (cmd.includes('photo') || cmd.includes('capture')) takeSnapshot();
+    else if (cmd.includes('photo') || cmd.includes('capture') || cmd.includes('snap')) takeSnapshot();
     else if (cmd.includes('earring')) selectJewelryType('earrings');
-    else if (cmd.includes('chain')) selectJewelryType('chains');
+    else if (cmd.includes('chain') || cmd.includes('necklace')) selectJewelryType('chains');
     else if (cmd.includes('ring')) selectJewelryType('rings');
     else if (cmd.includes('bangle')) selectJewelryType('bangles');
 }
@@ -126,50 +131,32 @@ async function preloadCategory(type) {
     }
 }
 
-/* --- 3. WHATSAPP & DOWNLOAD (FIXED) --- */
+/* --- 3. WHATSAPP & DOWNLOAD --- */
 function requestWhatsApp(actionType) {
     pendingDownloadAction = actionType;
     document.getElementById('whatsapp-modal').style.display = 'flex';
 }
-
 function confirmWhatsAppDownload() {
     const phone = document.getElementById('user-phone').value.trim();
     if (phone.length < 5) { alert("Invalid Number"); return; }
-    
     document.getElementById('whatsapp-modal').style.display = 'none';
     const overlay = document.getElementById('process-overlay');
     overlay.style.display = 'flex';
-    document.getElementById('process-text').innerText = "Downloading Image...";
+    document.getElementById('process-text').innerText = "Sending...";
     
-    // 1. Send to Lead Gen Sheet (Invisible to user)
+    // Send to Drive
     if (pendingDownloadAction === 'single' && currentPreviewData.url) {
          uploadToDrive(phone);
     }
 
     setTimeout(() => {
-        // 2. FORCE DOWNLOAD IMAGE TO GALLERY
-        // We must do this because websites cannot programmatically attach files to WhatsApp.
-        // The user must attach the downloaded image themselves.
-        if (pendingDownloadAction === 'single') {
-            saveAs(currentPreviewData.url, currentPreviewData.name);
-        } else if (pendingDownloadAction === 'zip') {
-            performZipDownload();
-        }
-
-        // 3. Open WhatsApp with Instruction
-        setTimeout(() => {
-            const msg = encodeURIComponent("Hi! I just downloaded my Jewels-Ai virtual try-on look (attached).");
-            // Opening WhatsApp
-            window.open(`https://wa.me/${phone.replace('+','')}?text=${msg}`, '_blank');
-            
-            // Hide Overlay
-            overlay.style.display = 'none';
-            alert("Image Saved to Gallery! Please attach it in WhatsApp now.");
-        }, 1000);
-        
+        const msg = encodeURIComponent("Hi! Here is my Jewels-Ai look.");
+        window.open(`https://wa.me/${phone.replace('+','')}?text=${msg}`, '_blank');
+        if (pendingDownloadAction === 'single') saveAs(currentPreviewData.url, currentPreviewData.name);
+        else if (pendingDownloadAction === 'zip') performZipDownload();
+        setTimeout(() => { overlay.style.display = 'none'; }, 2000);
     }, 1500);
 }
-
 function uploadToDrive(phone) {
     const data = pendingDownloadAction === 'single' ? currentPreviewData : (autoSnapshots[0] || {}); 
     if(!data.url) return;
@@ -255,15 +242,12 @@ faceMesh.onResults((results) => {
   if (results.multiFaceLandmarks && results.multiFaceLandmarks[0]) {
     const lm = results.multiFaceLandmarks[0];
     const w = canvasElement.width; const h = canvasElement.height;
-    
-    // IMPROVED EAR LANDMARKS (Lobe)
-    // 177 is closer to the lobe for Left, 401 for Right
-    const leftEar = { x: lm[177].x * w, y: lm[177].y * h }; 
-    const rightEar = { x: lm[401].x * w, y: lm[401].y * h };
+    const leftEar = { x: lm[132].x * w, y: lm[132].y * h };
+    const rightEar = { x: lm[361].x * w, y: lm[361].y * h };
     const neck = { x: lm[152].x * w, y: lm[152].y * h };
     const nose = { x: lm[1].x * w, y: lm[1].y * h };
 
-    // Physics (Gravity)
+    // Physics
     const rawHeadTilt = Math.atan2(rightEar.y - leftEar.y, rightEar.x - leftEar.x);
     const gravityTarget = -rawHeadTilt; 
     physics.earringVelocity += (gravityTarget - physics.earringAngle) * 0.08;
@@ -273,30 +257,18 @@ faceMesh.onResults((results) => {
     const earDist = Math.hypot(rightEar.x - leftEar.x, rightEar.y - leftEar.y);
 
     if (earringImg && earringImg.complete) {
-      let ew = earDist * 0.25; 
-      let eh = (earringImg.height/earringImg.width) * ew;
-
-      // Side View Hiding
+      let ew = earDist * 0.25; let eh = (earringImg.height/earringImg.width) * ew;
       const distToLeft = Math.hypot(nose.x - leftEar.x, nose.y - leftEar.y);
       const distToRight = Math.hypot(nose.x - rightEar.x, nose.y - rightEar.y);
       const ratio = distToLeft / (distToLeft + distToRight);
 
-      // Draw Left Earring (Offset slightly down for lobe)
-      if (ratio > 0.25) { 
-          canvasCtx.save();
-          canvasCtx.translate(leftEar.x, leftEar.y + (earDist * 0.05)); // 0.05 offset pushes it down to lobe
-          canvasCtx.rotate(physics.earringAngle); 
-          // Anchor point: Top Center of image
-          canvasCtx.drawImage(earringImg, -ew/2, 0, ew, eh); 
-          canvasCtx.restore();
+      if (ratio > 0.2) { 
+          canvasCtx.save(); canvasCtx.translate(leftEar.x, leftEar.y); canvasCtx.rotate(physics.earringAngle); 
+          canvasCtx.drawImage(earringImg, -ew/2, 0, ew, eh); canvasCtx.restore();
       }
-      // Draw Right Earring
-      if (ratio < 0.75) {
-          canvasCtx.save();
-          canvasCtx.translate(rightEar.x, rightEar.y + (earDist * 0.05));
-          canvasCtx.rotate(physics.earringAngle); 
-          canvasCtx.drawImage(earringImg, -ew/2, 0, ew, eh); 
-          canvasCtx.restore();
+      if (ratio < 0.8) {
+          canvasCtx.save(); canvasCtx.translate(rightEar.x, rightEar.y); canvasCtx.rotate(physics.earringAngle); 
+          canvasCtx.drawImage(earringImg, -ew/2, 0, ew, eh); canvasCtx.restore();
       }
     }
     if (necklaceImg && necklaceImg.complete) {
@@ -311,7 +283,7 @@ async function startCameraFast() {
     try {
         const stream = await navigator.mediaDevices.getUserMedia({ video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: "user" } });
         videoElement.srcObject = stream;
-        videoElement.onloadeddata = () => { videoElement.play(); loadingStatus.style.display = 'none'; detectLoop(); initVoiceControl(); };
+        videoElement.onloadeddata = () => { videoElement.play(); loadingStatus.textContent = "Loading AI Models..."; detectLoop(); initVoiceControl(); };
     } catch (err) { alert("Camera Error: Check Permissions"); }
 }
 async function detectLoop() {
@@ -365,6 +337,15 @@ function captureToGallery() {
   tempCtx.translate(tempCanvas.width, 0); tempCtx.scale(-1, 1); tempCtx.drawImage(videoElement, 0, 0);
   tempCtx.setTransform(1, 0, 0, 1, 0, 0); 
   try { tempCtx.drawImage(canvasElement, 0, 0); } catch(e) {}
+  
+  const padding = 20; 
+  tempCtx.font = "bold 24px Montserrat, sans-serif"; tempCtx.textAlign = "left"; tempCtx.textBaseline = "bottom";
+  tempCtx.fillStyle = "white"; tempCtx.fillText("Jewels-Ai Look", padding, tempCanvas.height - padding);
+  if (watermarkImg.complete) {
+      const wWidth = tempCanvas.width * 0.25; const wHeight = (watermarkImg.height / watermarkImg.width) * wWidth;
+      tempCtx.drawImage(watermarkImg, tempCanvas.width - wWidth - padding, tempCanvas.height - wHeight - padding, wWidth, wHeight);
+  }
+  
   const dataUrl = tempCanvas.toDataURL('image/png');
   autoSnapshots.push({ url: dataUrl, name: `Look_${Date.now()}.png` });
   return { url: dataUrl, name: `Look_${Date.now()}.png` }; 
