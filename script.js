@@ -7,8 +7,8 @@ const DRIVE_API_KEY = "AIzaSyAXG3iG2oQjUA_BpnO8dK8y-MHJ7HLrhyE";
 const UPLOAD_SCRIPT_URL = "https://script.google.com/macros/s/AKfycby96W9Mf1fvsfdp7dpzRCEiQEvFEg3ZiSa-iEnYgbr4Zu2bC7IcQVMTxudp4QDofAg3/exec";
 
 const DRIVE_FOLDERS = {
-  earrings: "1ySHR6Id5RxVj16-lf7NMN9I61RPySY9s",
-  chains: "1BHhizdJ4MDfrqITTkynshEL9D0b1MY-J",
+  earrings: "1eftKhpOHbCj8hzO11-KioFv03g0Yn61n",
+  chains: "1G136WEiA9QBSLtRk0LW1fRb3HDZb4VBD",
   rings: "1iB1qgTE-Yl7w-CVsegecniD_DzklQk90",
   bangles: "1d2b7I8XlhIEb8S_eXnRFBEaNYSwngnba"
 };
